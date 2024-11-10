@@ -10,14 +10,16 @@ CXXFLAGS = -Wall -std=c++17 -DGL_SILENCE_DEPRECATION
 GLFW_PATH = $(shell brew --prefix glfw)
 GLEW_PATH = $(shell brew --prefix glew)
 GLM_PATH = $(shell brew --prefix glm)
+GLUT_PATH = $(shell brew --prefix freeglut)
 
 # Include directories
-APP_INCLUDES = -I$(GLFW_PATH)/include -I$(GLEW_PATH)/include -I$(GLM_PATH)/include
+APP_INCLUDES = -I$(GLFW_PATH)/include -I$(GLEW_PATH)/include -I$(GLM_PATH)/include -I$(GLUT_PATH)/include
 
 # Linker flags and libraries
 APP_LINKERS = -L$(GLFW_PATH)/lib \
               -L$(GLEW_PATH)/lib \
-              -lglfw -lGLEW -framework OpenGL
+              -L$(GLUT_PATH)/lib \
+              -lglfw -lGLEW -framework GLUT -framework OpenGL
 
 # Build target
 build:

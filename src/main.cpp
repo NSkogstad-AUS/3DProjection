@@ -1,6 +1,8 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include <GLUT/glut.h>
 #include <iostream>
+#include <sstream>
 #include "renderer.h"
 #include "camera.h"
 
@@ -50,8 +52,51 @@ void window_focus_callback(GLFWwindow* window, int focused) {
     }
 }
 
-int main() {
-    // Initalising GLFW
+// Function to render text using GLFW
+void renderText(GLFWwindow* window, const std::string& text, float x, float y) {
+    int width, height;
+    glfwGetWindowSize(window, &width, &height);
+
+    glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
+    glLoadIdentity();
+    glOrtho(0, width, 0, height, -1, 1);
+
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    glLoadIdentity();
+
+    glDisable(GL_DEPTH_TEST); // Disable depth test to ensure text is rendered on top
+    glColor3f(1.0f, 1.0f, 1.0f); // Set text color to white
+
+    glRasterPos2f(x, height - y);
+
+    for (char c : text) {
+        // Use a simple bitmap font
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, c);
+    }
+
+    glEnable(GL_DEPTH_TEST); // Re-enable depth test
+
+    glPopMatrix();
+    glMatrixMode(GL_PROJECTION);
+    glPopMatrix();
+    glMatrixMode(GL_MODELVIEW);
+}
+
+// Function to check for OpenGL errors
+void checkGLError(const std::string& location) {
+    GLenum err;
+    while ((err = glGetError()) != GL_NO_ERROR) {
+        std::cerr << "OpenGL error at " << location << ": " << err << std::endl;
+    }
+}
+
+int main(int argc, char** argv) {
+    // Initialize GLUT
+    glutInit(&argc, argv);
+
+    // Initialising GLFW
     if(!glfwInit()) {
         std::cerr << "Failed to initalise GLFW" << std::endl;
         return -1;
@@ -76,7 +121,8 @@ int main() {
     // making context current
     glfwMakeContextCurrent(window);
 
-    // glewExperimental = GL_TRUE; // Uncomment if using GLEW
+    // Initialize GLEW
+    glewExperimental = GL_TRUE; // Ensure this is set before initializing GLEW
     if (glewInit() != GLEW_OK) {
         std::cerr << "Failed to initialize GLEW" << std::endl;
         return -1;
@@ -111,6 +157,17 @@ int main() {
 
         // Rendering scene
         renderer.render();
+
+        // Check for OpenGL errors
+        checkGLError("After rendering");
+
+        // Render camera position text
+        std::stringstream ss;
+        ss << "Camera Position: (" << camera.Position.x << ", " << camera.Position.y << ")";
+        renderText(window, ss.str(), 10.0f, 10.0f);
+
+        // Check for OpenGL errors
+        checkGLError("After rendering text");
 
         // Swap buffers
         glfwSwapBuffers(window);
