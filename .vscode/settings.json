@@ -1,0 +1,14 @@
+{
+    "files.associations": {
+        "iostream": "cpp",
+        "string": "cpp",
+        "ostream": "cpp",
+        "fstream": "cpp"
+    },
+    "C_Cpp.default.includePath": [
+        "${workspaceFolder}/**",
+        "/opt/homebrew/opt/glm/include",
+        "/opt/homebrew/opt/glew/include",
+        "/opt/homebrew/opt/glfw/include"
+    ]
+}
