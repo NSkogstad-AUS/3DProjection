@@ -1,4 +1,5 @@
 #pragma once
+#include <set>
 
 class Renderer {
     public:
@@ -9,4 +10,7 @@ class Renderer {
     private:
         static const int CHUNK_SIZE = 10;
         std::pair<int, int> getCurrentChunk(float cameraX, float cameraZ);
+        void updateVisitedChunks(const std::pair<int, int>& chunk);
+
+        std::set<std::pair<int, int>> visitedChunks;
 };

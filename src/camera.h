@@ -50,7 +50,7 @@ public:
             direction += Right;
 
         if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
-            velocity *= 2.0f; // Increase speed when left shift is pressed
+            velocity *= 5.0f; // Increase speed when left shift is pressed
 
         Position += direction * velocity;
     }
