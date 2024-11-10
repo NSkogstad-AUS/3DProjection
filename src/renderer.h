@@ -6,4 +6,7 @@ class Renderer {
         void render();
         void cleanup();
         unsigned int loadShaders(const char* vertexPath, const char* fragmentPath);
+    private:
+        static const int CHUNK_SIZE = 10;
+        std::pair<int, int> getCurrentChunk(float cameraX, float cameraZ);
 };

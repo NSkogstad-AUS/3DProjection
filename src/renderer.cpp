@@ -79,40 +79,53 @@ void Renderer::render() {
     glUseProgram(shaderProgram);
     glBindVertexArray(VAO);
 
-    // Model matrix: rotating the cube over time
-    glm::mat4 model = glm::mat4(1.0f);
-    // model = glm::rotate(model, (float)glfwGetTime(), glm::vec3(0.0f, 0.0f, 0.0f)); // Comment out or remove this line
-
     // View matrix from the camera
     glm::mat4 view = camera.GetViewMatrix();
 
     // Projection matrix: perspective projection
     glm::mat4 project = glm::perspective(glm::radians(45.0f), (float)800 / (float)600, 0.1f, 100.0f);
 
-    // Set the matricies in the shader
-    GLint modelLoc = glGetUniformLocation(shaderProgram, "model");
+    // Set the matrices in the shader
     GLint viewLoc = glGetUniformLocation(shaderProgram, "view");
     GLint projectionLoc = glGetUniformLocation(shaderProgram, "projection");
-
-    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
     glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(project));
 
-    // Drawing the cube faces
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    // Determine the current chunk based on the camera's x and z positions
+    std::pair<int, int> currentChunk = getCurrentChunk(camera.Position.x, camera.Position.z);
+
+    // Drawing the cubes in the current chunk
+    GLint modelLoc = glGetUniformLocation(shaderProgram, "model");
     GLint colorLoc = glGetUniformLocation(shaderProgram, "color");
-    glUniform4f(colorLoc, 1.0f, 0.5f, 0.2f, 1.0f);
-    glDrawArrays(GL_TRIANGLES, 0, 36);
 
-    // Drawing the wireframe deges
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    glUniform4f(colorLoc, 1.0f, 1.0f, 1.0f, 1.0f);
-    glDrawArrays(GL_TRIANGLES, 0, 36);
+    for (int x = currentChunk.first * CHUNK_SIZE; x < (currentChunk.first + 1) * CHUNK_SIZE; ++x) {
+        for (int z = currentChunk.second * CHUNK_SIZE; z < (currentChunk.second + 1) * CHUNK_SIZE; ++z) {
+            glm::mat4 model = glm::mat4(1.0f);
+            model = glm::translate(model, glm::vec3(x, 0.0f, z)); // Fix y position to 0
+            glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 
-    // Reseting the polygon mode
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+            // Drawing the cube faces
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+            glUniform4f(colorLoc, 1.0f, 0.5f, 0.2f, 1.0f);
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+
+            // Drawing the wireframe edges
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            glUniform4f(colorLoc, 1.0f, 1.0f, 1.0f, 1.0f);
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+
+            // Resetting the polygon mode
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        }
+    }
 
     glBindVertexArray(0);
+}
+
+std::pair<int, int> Renderer::getCurrentChunk(float cameraX, float cameraZ) {
+    int chunkX = static_cast<int>(cameraX) / CHUNK_SIZE;
+    int chunkZ = static_cast<int>(cameraZ) / CHUNK_SIZE;
+    return std::make_pair(chunkX, chunkZ);
 }
 
 void Renderer::cleanup() {
