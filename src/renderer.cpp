@@ -8,9 +8,12 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include "camera.h"
 
 // vertex buffer object
 unsigned int VBO, VAO, shaderProgram;
+
+extern Camera camera;
 
 void Renderer::initialise() {
     
@@ -78,11 +81,10 @@ void Renderer::render() {
 
     // Model matrix: rotating the cube over time
     glm::mat4 model = glm::mat4(1.0f);
-    model = glm::rotate(model, (float)glfwGetTime(), glm::vec3(0.5f, 1.0f, 0.0f));
+    // model = glm::rotate(model, (float)glfwGetTime(), glm::vec3(0.0f, 0.0f, 0.0f)); // Comment out or remove this line
 
-    // View matrix (moving cameera backwards)
-    glm::mat4 view = glm::mat4(1.0f);
-    view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
+    // View matrix from the camera
+    glm::mat4 view = camera.GetViewMatrix();
 
     // Projection matrix: perspective projection
     glm::mat4 project = glm::perspective(glm::radians(45.0f), (float)800 / (float)600, 0.1f, 100.0f);
@@ -95,9 +97,20 @@ void Renderer::render() {
     glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
     glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(project));
-    
-    // Drawing the cube
+
+    // Drawing the cube faces
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    GLint colorLoc = glGetUniformLocation(shaderProgram, "color");
+    glUniform4f(colorLoc, 1.0f, 0.5f, 0.2f, 1.0f);
     glDrawArrays(GL_TRIANGLES, 0, 36);
+
+    // Drawing the wireframe deges
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    glUniform4f(colorLoc, 1.0f, 1.0f, 1.0f, 1.0f);
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+
+    // Reseting the polygon mode
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
     glBindVertexArray(0);
 }

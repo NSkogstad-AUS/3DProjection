@@ -2,6 +2,53 @@
 #include <GLFW/glfw3.h>
 #include <iostream>
 #include "renderer.h"
+#include "camera.h"
+
+// Camera instance
+Camera camera;
+
+// Time tracking variables
+float lastFrame = 0.0f;
+float lastX = 400, lastY = 300; // Center of the screen
+bool firstMouse = true;
+bool cursorEnabled = false;
+
+// Mouse callback to process mouse movement
+void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
+    if (!cursorEnabled && glfwGetWindowAttrib(window, GLFW_FOCUSED)) {
+        if (firstMouse) {
+            lastX = xpos;
+            lastY = ypos;
+            firstMouse = false;
+        }
+
+        float xOffset = xpos - lastX;
+        float yOffset = lastY - ypos;
+        lastX = xpos;
+        lastY = ypos;
+
+        camera.ProcessMouseMovement(xOffset, yOffset);
+    }
+}
+
+// Key callback to process key inputs
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+        cursorEnabled = !cursorEnabled;
+        glfwSetInputMode(window, GLFW_CURSOR, cursorEnabled ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED);
+        if (!cursorEnabled) {
+            firstMouse = true; // Reset the firstMouse flag
+        }
+    }
+}
+
+// Window focus callback to re-enable cursor
+void window_focus_callback(GLFWwindow* window, int focused) {
+    if (focused && !cursorEnabled) {
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        firstMouse = true; // Reset the firstMouse flag
+    }
+}
 
 int main() {
     // Initalising GLFW
@@ -38,20 +85,38 @@ int main() {
     // set our viewport
     glViewport(0, 0, 800, 600);
 
+    // Set the mouse callback and disable the cursor
+    glfwSetCursorPosCallback(window, mouse_callback);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+    // Set the key callback
+    glfwSetKeyCallback(window, key_callback);
+
+    // Set the window focus callback
+    glfwSetWindowFocusCallback(window, window_focus_callback);
+
     // Create and initalise the renderer
     Renderer renderer;
     renderer.initialise();
 
     // Main rendering loop
     while (!glfwWindowShouldClose(window)) {
-        // Checking events
-        glfwPollEvents();
+        // Calculate deltaTime
+        float currentFrame = glfwGetTime();
+        float deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame;
+
+        // Process input for camera movement
+        camera.ProcessKeyboard(window, deltaTime);
 
         // Rendering scene
         renderer.render();
 
         // Swap buffers
         glfwSwapBuffers(window);
+
+        // Checking events
+        glfwPollEvents();
     }
 
     // And cleanup
