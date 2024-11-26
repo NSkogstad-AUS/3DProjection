@@ -109,7 +109,7 @@ int main(int argc, char** argv) {
     // Set the window focus callback
     glfwSetWindowFocusCallback(window, window_focus_callback);
 
-    // Create and initalise the renderer
+    // Create and initialise the renderer
     Renderer renderer;
     renderer.initialise();
 
