@@ -70,8 +70,8 @@ void Renderer::initialise() {
 
     // Enabling face culling
     glEnable(GL_CULL_FACE);
-    glCullFace(GL_BACK);
-    glFrontFace(GL_CCW);
+    glCullFace(GL_BACK); // Cull back faces
+    glFrontFace(GL_CCW); // Counter-clockwise vertices are considered front-facing
 
     // Unbinding the VBO and VAO to prevent accidental modifications
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -106,6 +106,11 @@ void Renderer::render() {
     GLint colorLoc = glGetUniformLocation(shaderProgram, "color");
 
     for (const auto& chunk : visitedChunks) {
+        // Set a unique color for each chunk based on its coordinates
+        float outlineColorR = (chunk.first % 2 == 0) ? 1.0f : 0.0f;
+        float outlineColorG = (chunk.second % 2 == 0) ? 1.0f : 0.0f;
+        float outlineColorB = ((chunk.first + chunk.second) % 2 == 0) ? 1.0f : 0.0f;
+
         for (int x = chunk.first * CHUNK_SIZE; x < (chunk.first + 1) * CHUNK_SIZE; ++x) {
             for (int z = chunk.second * CHUNK_SIZE; z < (chunk.second + 1) * CHUNK_SIZE; ++z) {
                 glm::mat4 model = glm::mat4(1.0f);
@@ -117,9 +122,9 @@ void Renderer::render() {
                 glUniform4f(colorLoc, 0.0f, 0.5f, 0.2f, 1.0f);
                 glDrawArrays(GL_TRIANGLES, 0, 36);
 
-                // Drawing the wireframe edges
+                // Drawing the wireframe edges with unique color
                 glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-                glUniform4f(colorLoc, 1.0f, 1.0f, 1.0f, 1.0f);
+                glUniform4f(colorLoc, outlineColorR, outlineColorG, outlineColorB, 1.0f);
                 glDrawArrays(GL_TRIANGLES, 0, 36);
 
                 // Resetting the polygon mode
@@ -132,12 +137,17 @@ void Renderer::render() {
 }
 
 void Renderer::updateVisitedChunks(const std::pair<int, int>& chunk) {
-    visitedChunks.insert(chunk);
+    visitedChunks.clear();
+    for (int dx = -1; dx <= 1; ++dx) {
+        for (int dz = -1; dz <= 1; ++dz) {
+            visitedChunks.insert(std::make_pair(chunk.first + dx, chunk.second + dz));
+        }
+    }
 }
 
 std::pair<int, int> Renderer::getCurrentChunk(float cameraX, float cameraZ) {
-    int chunkX = static_cast<int>(cameraX) / CHUNK_SIZE;
-    int chunkZ = static_cast<int>(cameraZ) / CHUNK_SIZE;
+    int chunkX = static_cast<int>(std::floor(cameraX / CHUNK_SIZE));
+    int chunkZ = static_cast<int>(std::floor(cameraZ / CHUNK_SIZE));
     return std::make_pair(chunkX, chunkZ);
 }
 
