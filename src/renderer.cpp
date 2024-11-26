@@ -67,11 +67,36 @@ void Renderer::initialise() {
 
     // Enabling depth testing
     glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS); // Default depth test function
 
     // Enabling face culling
     glEnable(GL_CULL_FACE);
-    glCullFace(GL_BACK); // Cull back faces
-    glFrontFace(GL_CCW); // Counter-clockwise vertices are considered front-facing
+    glCullFace(GL_BACK);
+    glFrontFace(GL_CCW);
+
+    // Verify that depth testing and face culling are enabled
+    GLint depthTestEnabled, cullFaceEnabled;
+    glGetIntegerv(GL_DEPTH_TEST, &depthTestEnabled);
+    glGetIntegerv(GL_CULL_FACE, &cullFaceEnabled);
+    std::cout << "Depth Test Enabled: " << (depthTestEnabled ? "Yes" : "No") << std::endl;
+    std::cout << "Face Culling Enabled: " << (cullFaceEnabled ? "Yes" : "No") << std::endl;
+
+    // Verify shader program
+    if (shaderProgram == 0) {
+        std::cerr << "Shader program failed to load." << std::endl;
+    } else {
+        std::cout << "Shader program loaded successfully." << std::endl;
+    }
+
+    // Verify vertex data
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    void* ptr = glMapBuffer(GL_ARRAY_BUFFER, GL_READ_ONLY);
+    if (ptr) {
+        std::cout << "Vertex data loaded successfully." << std::endl;
+        glUnmapBuffer(GL_ARRAY_BUFFER);
+    } else {
+        std::cerr << "Failed to load vertex data." << std::endl;
+    }
 
     // Unbinding the VBO and VAO to prevent accidental modifications
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -112,23 +137,35 @@ void Renderer::render() {
         float outlineColorB = ((chunk.first + chunk.second) % 2 == 0) ? 1.0f : 0.0f;
 
         for (int x = chunk.first * CHUNK_SIZE; x < (chunk.first + 1) * CHUNK_SIZE; ++x) {
-            for (int z = chunk.second * CHUNK_SIZE; z < (chunk.second + 1) * CHUNK_SIZE; ++z) {
-                glm::mat4 model = glm::mat4(1.0f);
-                model = glm::translate(model, glm::vec3(x, 0.0f, z)); // Fix y position to 0
-                glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+            for (int y = 0; y < CHUNK_SIZE; ++y) { // Loop over y-axis
+                for (int z = chunk.second * CHUNK_SIZE; z < (chunk.second + 1) * CHUNK_SIZE; ++z) {
+                    glm::mat4 model = glm::mat4(1.0f);
+                    model = glm::translate(model, glm::vec3(x, y, z)); // Include y and z positions
 
-                // Drawing the cube faces
-                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-                glUniform4f(colorLoc, 0.0f, 0.5f, 0.2f, 1.0f);
-                glDrawArrays(GL_TRIANGLES, 0, 36);
+                    // Ensure no negative scaling is applied
+                    // model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f)); // Example of positive scaling
 
-                // Drawing the wireframe edges with unique color
-                glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-                glUniform4f(colorLoc, outlineColorR, outlineColorG, outlineColorB, 1.0f);
-                glDrawArrays(GL_TRIANGLES, 0, 36);
+                    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 
-                // Resetting the polygon mode
-                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+                    // Drawing the cube faces
+                    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+                    glUniform4f(colorLoc, 0.0f, 0.5f, 0.2f, 1.0f);
+                    glDrawArrays(GL_TRIANGLES, 0, 36);
+
+                    // Check for OpenGL errors after drawing
+                    //checkGLError("After drawing cube faces");
+
+                    // Drawing the wireframe edges with unique color
+                    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+                    glUniform4f(colorLoc, outlineColorR, outlineColorG, outlineColorB, 1.0f);
+                    glDrawArrays(GL_TRIANGLES, 0, 36);
+
+                    // Check for OpenGL errors after drawing wireframe
+                    //checkGLError("After drawing wireframe");
+
+                    // Resetting the polygon mode
+                    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+                }
             }
         }
     }

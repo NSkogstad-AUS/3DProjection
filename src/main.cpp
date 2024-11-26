@@ -99,6 +99,15 @@ int main(int argc, char** argv) {
     // set our viewport
     glViewport(0, 0, 800, 600);
 
+    // Enable depth testing
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS);
+
+    // Verify that depth testing is enabled
+    GLint depthTestEnabled;
+    glGetIntegerv(GL_DEPTH_TEST, &depthTestEnabled);
+    std::cout << "Depth Test Enabled: " << (depthTestEnabled ? "Yes" : "No") << std::endl;
+
     // Set the mouse callback and disable the cursor
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
