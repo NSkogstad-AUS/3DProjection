@@ -99,6 +99,9 @@ int main(int argc, char** argv) {
     // set our viewport
     glViewport(0, 0, 800, 600);
 
+    // Set the clear color
+    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+
     // Enable depth testing
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
@@ -121,6 +124,9 @@ int main(int argc, char** argv) {
     // Create and initialise the renderer
     Renderer renderer;
     renderer.initialise();
+
+    // Set initial camera position
+    camera.Position = glm::vec3(0.0f, 10.0f, 20.0f); // Adjust as needed
 
     // Main rendering loop
     while (!glfwWindowShouldClose(window)) {

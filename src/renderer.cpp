@@ -1,3 +1,5 @@
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 #include <GL/glew.h>
 #include <OpenGL/gl.h>
 #include <GLFW/glfw3.h>
@@ -10,14 +12,15 @@
 #include <glm/gtc/type_ptr.hpp>
 #include "camera.h"
 #include <set>
+#include <vector>
+#define CHUNK_SIZE 16 // Define the chunk size
 
 // vertex buffer object
-unsigned int VBO, VAO, shaderProgram;
+unsigned int cubeVBO, cubeVAO, terrainVBO, terrainVAO, shaderProgram;
 
 extern Camera camera;
 
 void Renderer::initialise() {
-    
     // Define vertices for a 3D cube (counter-clockwise order)
     float vertices[] = {
         // Front face
@@ -45,31 +48,31 @@ void Renderer::initialise() {
          0.5f, -0.5f,  0.5f, -0.5f, -0.5f,  0.5f, -0.5f, -0.5f, -0.5f
     };
 
-    // generating and binding Vertex Array Object (VAO)
-    glGenVertexArrays(1, &VAO);
-    glBindVertexArray(VAO);
+    // Generate and bind Vertex Array Object (VAO) for the cube
+    glGenVertexArrays(1, &cubeVAO);
+    glBindVertexArray(cubeVAO);
 
-    // generating and binding the Vertex Buffer Object (VBO)
-    glGenBuffers(1, &VBO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    // Generate and bind the Vertex Buffer Object (VBO) for the cube
+    glGenBuffers(1, &cubeVBO);
+    glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
-    // defining vertex attribute pointer
+    // Define vertex attribute pointer for the cube
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
-    // loading and compiling shaders
+    // Load and compile shaders
     shaderProgram = loadShaders("shaders/vertexShader.vert", "shaders/fragmentShader.frag");
     if (shaderProgram == 0) {
         std::cerr << "Failed to load shaders." << std::endl;
         return;
     }
 
-    // Enabling depth testing
+    // Enable depth testing
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS); // Default depth test function
 
-    // Enabling face culling
+    // Enable face culling
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
     glFrontFace(GL_CCW);
@@ -88,8 +91,8 @@ void Renderer::initialise() {
         std::cout << "Shader program loaded successfully." << std::endl;
     }
 
-    // Verify vertex data
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    // Verify vertex data for the cube
+    glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);
     void* ptr = glMapBuffer(GL_ARRAY_BUFFER, GL_READ_ONLY);
     if (ptr) {
         std::cout << "Vertex data loaded successfully." << std::endl;
@@ -98,7 +101,34 @@ void Renderer::initialise() {
         std::cerr << "Failed to load vertex data." << std::endl;
     }
 
-    // Unbinding the VBO and VAO to prevent accidental modifications
+    // Unbind the VBO and VAO for the cube to prevent accidental modifications
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
+    // Load height map
+    int width, height;
+    std::vector<float> heightMap = loadHeightMap("/Users/nicolaiskogstad/[ CUSTOM PROJECTS ]/3DProjection/pics/Tangram Heightmapper (1).png", width, height);
+    if (heightMap.empty()) {
+        return;
+    }
+
+    // Generate terrain vertices
+    terrainVertices = generateTerrainVertices(heightMap, width, height);
+
+    // Generate and bind Vertex Array Object (VAO) for the terrain
+    glGenVertexArrays(1, &terrainVAO);
+    glBindVertexArray(terrainVAO);
+
+    // Generate and bind the Vertex Buffer Object (VBO) for the terrain
+    glGenBuffers(1, &terrainVBO);
+    glBindBuffer(GL_ARRAY_BUFFER, terrainVBO);
+    glBufferData(GL_ARRAY_BUFFER, terrainVertices.size() * sizeof(float), terrainVertices.data(), GL_STATIC_DRAW);
+
+    // Define vertex attribute pointer for the terrain
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    // Unbind the VBO and VAO for the terrain to prevent accidental modifications
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 }
@@ -106,9 +136,8 @@ void Renderer::initialise() {
 void Renderer::render() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     
-    // Using shader program and then bind the VAO
+    // Using shader program
     glUseProgram(shaderProgram);
-    glBindVertexArray(VAO);
 
     // View matrix from the camera
     glm::mat4 view = camera.GetViewMatrix();
@@ -122,11 +151,8 @@ void Renderer::render() {
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
     glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(project));
 
-    // Determine the current chunk based on the camera's x and z positions
-    std::pair<int, int> currentChunk = getCurrentChunk(camera.Position.x, camera.Position.z);
-    updateVisitedChunks(currentChunk);
-
-    // Drawing the cubes in the visited chunks
+    // Render the cubes
+    glBindVertexArray(cubeVAO);
     GLint modelLoc = glGetUniformLocation(shaderProgram, "model");
     GLint colorLoc = glGetUniformLocation(shaderProgram, "color");
 
@@ -142,9 +168,6 @@ void Renderer::render() {
                     glm::mat4 model = glm::mat4(1.0f);
                     model = glm::translate(model, glm::vec3(x, y, z)); // Include y and z positions
 
-                    // Ensure no negative scaling is applied
-                    // model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f)); // Example of positive scaling
-
                     glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 
                     // Drawing the cube faces
@@ -152,16 +175,10 @@ void Renderer::render() {
                     glUniform4f(colorLoc, 0.0f, 0.5f, 0.2f, 1.0f);
                     glDrawArrays(GL_TRIANGLES, 0, 36);
 
-                    // Check for OpenGL errors after drawing
-                    //checkGLError("After drawing cube faces");
-
                     // Drawing the wireframe edges with unique color
                     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
                     glUniform4f(colorLoc, outlineColorR, outlineColorG, outlineColorB, 1.0f);
                     glDrawArrays(GL_TRIANGLES, 0, 36);
-
-                    // Check for OpenGL errors after drawing wireframe
-                    //checkGLError("After drawing wireframe");
 
                     // Resetting the polygon mode
                     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -170,7 +187,19 @@ void Renderer::render() {
         }
     }
 
+    // Render the terrain
+    glBindVertexArray(terrainVAO);
+    glm::mat4 model = glm::mat4(1.0f);
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+    glDrawArrays(GL_TRIANGLES, 0, terrainVertices.size() / 3);
+
     glBindVertexArray(0);
+
+    // Debug: Check for OpenGL errors
+    GLenum err;
+    while ((err = glGetError()) != GL_NO_ERROR) {
+        std::cerr << "OpenGL error during rendering: " << err << std::endl;
+    }
 }
 
 void Renderer::updateVisitedChunks(const std::pair<int, int>& chunk) {
@@ -190,8 +219,10 @@ std::pair<int, int> Renderer::getCurrentChunk(float cameraX, float cameraZ) {
 
 void Renderer::cleanup() {
     // Good practice to clean up :)
-    glDeleteVertexArrays(1, &VAO);
-    glDeleteBuffers(1, &VBO);
+    glDeleteVertexArrays(1, &cubeVAO);
+    glDeleteBuffers(1, &cubeVBO);
+    glDeleteVertexArrays(1, &terrainVAO);
+    glDeleteBuffers(1, &terrainVBO);
     glDeleteProgram(shaderProgram);
 }
 
@@ -259,4 +290,41 @@ unsigned int Renderer::loadShaders(const char* vertexPath, const char* fragmentP
     glDeleteShader(fragment);
 
     return program;
+}
+
+std::vector<float> Renderer::loadHeightMap(const std::string& filePath, int& width, int& height) {
+    // Load the height map image using an image loading library like stb_image
+    int channels;
+    unsigned char* data = stbi_load(filePath.c_str(), &width, &height, &channels, 1);
+    if (!data) {
+        std::cerr << "Failed to load height map: " << filePath << std::endl;
+        return {};
+    }
+
+    std::vector<float> heightMap(width * height);
+    for (int i = 0; i < width * height; ++i) {
+        heightMap[i] = data[i] / 255.0f; // Normalize to [0, 1]
+    }
+
+    // Debug: Print some height values
+    std::cout << "Height Map Loaded: " << width << "x" << height << std::endl;
+    for (int i = 0; i < std::min(100, width * height); i += 10) {
+        std::cout << "Height[" << i << "]: " << heightMap[i] << std::endl;
+    }
+
+    stbi_image_free(data);
+    return heightMap;
+}
+
+std::vector<float> Renderer::generateTerrainVertices(const std::vector<float>& heightMap, int width, int height) {
+    std::vector<float> vertices;
+    for (int z = 0; z < height; ++z) {
+        for (int x = 0; x < width; ++x) {
+            float y = heightMap[z * width + x];
+            vertices.push_back(x);
+            vertices.push_back(y);
+            vertices.push_back(z);
+        }
+    }
+    return vertices;
 }
